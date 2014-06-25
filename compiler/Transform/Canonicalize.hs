@@ -220,7 +220,7 @@ expression' env (A.A ann expr) =
           where
             env' = foldr update env $ map (\(Valid.Definition p _ _) -> p) defs
             rename' (Valid.Definition p body mtipe) =
-                Canonical.Definition
+                Valid.Definition
                     <$> format (pattern env' p)
                     <*> expression env' body
                     <*> T.traverse (tipe' env') mtipe
