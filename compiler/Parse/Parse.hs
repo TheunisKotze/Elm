@@ -2,6 +2,8 @@
 module Parse.Parse (program, dependencies) where
 
 import Control.Applicative ((<$>), (<*>))
+import Control.Monad.Error (runErrorT)
+import Control.Monad.State (evalState)
 import qualified Data.List as List
 import qualified Data.Map as Map
 import Text.Parsec hiding (newline,spaces)
@@ -27,8 +29,8 @@ program :: OpTable -> String -> Either [P.Doc] M.ValidModule
 program table src =
     do (M.Module names filePath exs ims parseDecls) <-
            setupParserWithTable table programParser src
-       decls <-
-           either (\err -> Left [P.text err]) Right (combineAnnotations parseDecls)
+       let decls' = evalState (runErrorT (combineAnnotations parseDecls)) 0
+       decls <- either (\err -> Left [P.text err]) Right decls'
        return $ M.Module names filePath exs ims decls
 
 programParser :: IParser M.SourceModule

@@ -1,37 +1,45 @@
 {-# OPTIONS_GHC -Wall #-}
-module Transform.Expression (crawlLet, checkPorts) where
+module Transform.Expression (crawl, checkPorts) where
 
-import Control.Applicative ((<$>),(<*>))
+import Control.Applicative ( Applicative, (<$>), (<*>) )
 import AST.Annotation ( Annotated(A) )
 import AST.Expression.General
-import qualified AST.Expression.Canonical as Canonical
-import AST.Type (Type, CanonicalType)
+import qualified AST.Expression.Valid as Valid
+import AST.Type (CanonicalType)
 
-crawlLet :: ([def] -> Either a [def'])
-         -> Expr ann def var
-         -> Either a (Expr ann def' var)
-crawlLet = crawl (\_ _ -> return ()) (\_ _ -> return ())
-
-checkPorts :: (String -> CanonicalType -> Either a ())
-           -> (String -> CanonicalType -> Either a ())
-           -> Canonical.Expr
-           -> Either a Canonical.Expr
-checkPorts inCheck outCheck expr =
-    crawl inCheck outCheck (mapM checkDef) expr
+checkPorts :: (String -> CanonicalType -> Either err ())
+           -> (String -> CanonicalType -> Either err ())
+           -> Valid.CanonicalExpr
+           -> Either err Valid.CanonicalExpr
+checkPorts inCheck outCheck expr = go expr
     where
-      checkDef def@(Canonical.Definition _ body _) =
+      go = crawl (mapM checkDef) checkPort
+
+      checkDef def@(Valid.Definition _ body _) =
           do _ <- checkPorts inCheck outCheck body
              return def
 
-crawl :: (String -> Type var -> Either a ())
-      -> (String -> Type var -> Either a ())
-      -> ([def] -> Either a [def'])
-      -> Expr ann def var
-      -> Either a (Expr ann def' var)
-crawl portInCheck portOutCheck defsTransform = go
+      checkPort region port =
+          A region . Extras <$>
+          case port of
+            Valid.PortIn name st ->
+                do inCheck name st
+                   return $ Valid.PortIn name st
+
+            Valid.PortOut name st signal ->
+                do outCheck name st
+                   Valid.PortOut name st <$> go signal
+
+
+crawl :: (Monad m, Applicative m) =>
+         ([def] -> m [def'])
+      -> (ann -> ext -> m (Expr ann def' ext' var))
+      -> Expr ann def ext var
+      -> m (Expr ann def' ext' var)
+crawl defsTransform extTransform = go
     where
-      go (A srcSpan expr) =
-          A srcSpan <$>
+      go (A region expr) =
+          A region <$>
           case expr of
             Var x -> return (Var x)
             Lambda p e -> Lambda p <$> go e
@@ -51,9 +59,5 @@ crawl portInCheck portOutCheck defsTransform = go
             Markdown uid md es -> Markdown uid md <$> mapM go es
             Let defs body -> Let <$> defsTransform defs <*> go body
             GLShader uid src gltipe -> return $ GLShader uid src gltipe
-            PortIn name st ->
-                do portInCheck name st
-                   return $ PortIn name st
-            PortOut name st signal ->
-                do portOutCheck name st
-                   PortOut name st <$> go signal
+            Extras port -> do (A _ e) <- extTransform region port
+                              return e

@@ -1,11 +1,14 @@
 {-# OPTIONS_GHC -Wall #-}
 module Transform.Check (mistakes) where
 
+import Control.Applicative ((<$>))
 import qualified Control.Arrow as Arrow
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import qualified Data.Set as Set
 
+import AST.Annotation ( Annotated(A), Region )
+import AST.Expression.General (Expr' (Extras))
 import qualified AST.Expression.Valid as Valid
 import qualified AST.Declaration as D
 import qualified AST.Pattern as Pattern
@@ -51,15 +54,24 @@ duplicates decls =
               D.Out name expr _ -> (name, [expr])
               D.In name _ -> (name, [])
 
-    exprDups :: Valid.Expr -> Either String Valid.Expr
-    exprDups expr = Expr.crawlLet defsDups expr
+    exprDups :: Valid.RawExpr -> Either String Valid.RawExpr
+    exprDups expr = Expr.crawl defsDups extDups expr
 
-    defsDups :: [Valid.Def] -> Either String [Valid.Def]
+    defsDups :: [Valid.RawDef] -> Either String [Valid.RawDef]
     defsDups defs =
         let varsIn (Valid.Definition pattern _ _) = Pattern.boundVarList pattern in
         case dups $ concatMap varsIn defs of
           []     -> Right defs
           name:_ -> Left name
+
+    extDups :: Region -> Valid.Ports Var.Raw -> Either String Valid.RawExpr
+    extDups region port =
+        A region . Extras <$>
+        case port of
+          Valid.PortIn _name _tipe -> return port
+
+          Valid.PortOut name tipe expr ->
+              Valid.PortOut name tipe <$> exprDups expr
 
 duplicateConstructors :: [D.ValidDecl] -> [String]
 duplicateConstructors decls = 

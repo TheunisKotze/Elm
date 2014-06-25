@@ -11,7 +11,6 @@ import qualified Data.Traversable as T
 
 import AST.Expression.General (Expr'(..), dummyLet)
 import qualified AST.Expression.Valid as Valid
-import qualified AST.Expression.Canonical as Canonical
 
 import AST.Module (CanonicalBody(..))
 import qualified AST.Module as Module
@@ -150,7 +149,7 @@ declaration env decl =
           do p' <- canonicalize pattern "definition" p env p
              e' <- expression env e
              t' <- T.traverse (canonicalize Canonicalize.tipe "definition" p env) t
-             return $ D.Definition (Canonical.Definition p' e' t')
+             return $ D.Definition (Valid.Definition p' e' t')
 
       D.Datatype name tvars ctors ->
           D.Datatype name tvars <$> mapM canonicalize' ctors
@@ -176,16 +175,18 @@ declaration env decl =
 
       D.Fixity assoc prec op -> return $ D.Fixity assoc prec op
 
+expression :: Environment -> Valid.RawExpr -> Canonicalizer [Doc] Valid.CanonicalExpr
+expression env expr@(A.A region _) =
+    A.A region <$> expression' env expr
 
-expression :: Environment -> Valid.Expr -> Canonicalizer [Doc] Canonical.Expr
-expression env (A.A ann expr) =
+expression' :: Environment -> Valid.RawExpr -> Canonicalizer [Doc] Valid.CanonicalExpr'
+expression' env (A.A ann expr) =
     let go = expression env
         tipe' environ = format . Canonicalize.tipe environ
         throw err = P.vcat [ P.text "Error" <+> pretty ann <> P.colon
                            , P.text err ]
         format = Env.onError throw
     in
-    A.A ann <$>
     case expr of
       Literal lit -> return (Literal lit)
 
@@ -239,11 +240,17 @@ expression env (A.A ann expr) =
           do Env.uses "Text"
              Markdown uid md <$> mapM go es
 
-      PortIn name st -> PortIn name <$> tipe' env st
-
-      PortOut name st signal -> PortOut name <$> tipe' env st <*> go signal
-
       GLShader uid src tipe -> return (GLShader uid src tipe)
+
+      Extras port ->
+          Extras <$>
+          case port of
+            Valid.PortIn name st ->
+                Valid.PortIn name <$> tipe' env st
+
+            Valid.PortOut name st signal ->
+                Valid.PortOut name <$> tipe' env st <*> go signal
+
 
 pattern :: Environment -> P.RawPattern -> Canonicalizer String P.CanonicalPattern
 pattern env ptrn =

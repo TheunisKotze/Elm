@@ -10,7 +10,6 @@ module AST.Expression.General where
 
 import AST.PrettyPrint
 import Text.PrettyPrint as P
-import AST.Type (Type)
 
 import qualified AST.Annotation as Annotation
 import qualified AST.Helpers as Help
@@ -35,62 +34,63 @@ move through the compilation process. The type holes are used to represent:
        with information about what module a variable came from.
 
 -}
-type Expr annotation definition variable =
-    Annotation.Annotated annotation (Expr' annotation definition variable)
+type Expr annotation definition extension variable =
+    Annotation.Annotated annotation (Expr' annotation definition extension variable)
 
-data Expr' ann def var
+data Expr' ann def ext var
     = Literal Literal.Literal
     | Var var
-    | Range (Expr ann def var) (Expr ann def var)
-    | ExplicitList [Expr ann def var]
-    | Binop var (Expr ann def var) (Expr ann def var)
-    | Lambda (Pattern.Pattern var) (Expr ann def var)
-    | App (Expr ann def var) (Expr ann def var)
-    | MultiIf [(Expr ann def var,Expr ann def var)]
-    | Let [def] (Expr ann def var)
-    | Case (Expr ann def var) [(Pattern.Pattern var, Expr ann def var)]
-    | Data String [Expr ann def var]
-    | Access (Expr ann def var) String
-    | Remove (Expr ann def var) String
-    | Insert (Expr ann def var) String (Expr ann def var)
-    | Modify (Expr ann def var) [(String, Expr ann def var)]
-    | Record [(String, Expr ann def var)]
-    | Markdown String String [Expr ann def var]
-    -- for type checking and code gen only
-    | PortIn String (Type var)
-    | PortOut String (Type var) (Expr ann def var)
+    | Range (Expr ann def ext var) (Expr ann def ext var)
+    | ExplicitList [Expr ann def ext var]
+    | Binop var (Expr ann def ext var) (Expr ann def ext var)
+    | Lambda (Pattern.Pattern var) (Expr ann def ext var)
+    | App (Expr ann def ext var) (Expr ann def ext var)
+    | MultiIf [(Expr ann def ext var,Expr ann def ext var)]
+    | Let [def] (Expr ann def ext var)
+    | Case (Expr ann def ext var) [(Pattern.Pattern var, Expr ann def ext var)]
+    | Data String [Expr ann def ext var]
+    | Access (Expr ann def ext var) String
+    | Remove (Expr ann def ext var) String
+    | Insert (Expr ann def ext var) String (Expr ann def ext var)
+    | Modify (Expr ann def ext var) [(String, Expr ann def ext var)]
+    | Record [(String, Expr ann def ext var)]
+    | Markdown String String [Expr ann def ext var]
     | GLShader String String Literal.GLShaderTipe
+    | Extras ext
     deriving (Show)
 
 
 ---- UTILITIES ----
 
-rawVar :: String -> Expr' ann def Var.Raw
+rawVar :: String -> Expr' ann def ext Var.Raw
 rawVar x = Var (Var.Raw x)
 
-localVar :: String -> Expr' ann def Var.Canonical
+localVar :: String -> Expr' ann def ext Var.Canonical
 localVar x = Var (Var.Canonical Var.Local x)
 
-tuple :: [Expr ann def var] -> Expr' ann def var
+tuple :: [Expr ann def ext var] -> Expr' ann def ext var
 tuple es = Data ("_Tuple" ++ show (length es)) es
 
-delist :: Expr ann def var -> [Expr ann def var]
+delist :: Expr ann def ext var -> [Expr ann def ext var]
 delist (Annotation.A _ (Data "::" [h,t])) = h : delist t
 delist _ = []
 
 saveEnvName :: String
 saveEnvName = "_save_the_environment!!!"
 
-dummyLet :: (Pretty def) => [def] -> Expr Annotation.Region def Var.Canonical
+dummyLet :: (Pretty def, Pretty ext) =>
+            [def] -> Expr Annotation.Region def ext Var.Canonical
 dummyLet defs = 
      Annotation.none $ Let defs (Annotation.none $ Var (Var.builtin saveEnvName))
 
-instance (Pretty def, Pretty var, Var.ToString var) => Pretty (Expr' ann def var) where
+instance (Pretty def, Pretty ext, Var.ToString var) =>
+    Pretty (Expr' ann def ext var)
+ where
   pretty expr =
    case expr of
      Literal lit -> pretty lit
 
-     Var x -> pretty x
+     Var x -> P.text (Var.toString x)
 
      Range e1 e2 -> P.brackets (pretty e1 <> P.text ".." <> pretty e2)
 
@@ -161,17 +161,15 @@ instance (Pretty def, Pretty var, Var.ToString var) => Pretty (Expr' ann def var
 
      GLShader _ _ _ -> P.text "[glsl| ... |]"
 
-     PortIn name _ -> P.text $ "<port:" ++ name ++ ">"
+     Extras ext -> pretty ext
 
-     PortOut _ _ signal -> pretty signal
-
-collectApps :: Expr ann def var -> [Expr ann def var]
+collectApps :: Expr ann def ext var -> [Expr ann def ext var]
 collectApps annExpr@(Annotation.A _ expr) =
   case expr of
     App a b -> collectApps a ++ [b]
     _ -> [annExpr]
 
-collectLambdas :: Expr ann def var -> ([Pattern.Pattern var], Expr ann def var)
+collectLambdas :: Expr ann def ext var -> ([Pattern.Pattern var], Expr ann def ext var)
 collectLambdas lexpr@(Annotation.A _ expr) =
   case expr of
     Lambda pattern body ->
@@ -180,7 +178,8 @@ collectLambdas lexpr@(Annotation.A _ expr) =
 
     _ -> ([], lexpr)
 
-prettyParens :: (Pretty def, Pretty var, Var.ToString var) => Expr ann def var -> Doc
+prettyParens :: (Pretty def, Pretty ext, Var.ToString var) =>
+                Expr ann def ext var -> Doc
 prettyParens (Annotation.A _ expr) = parensIf needed (pretty expr)
   where
     needed =
