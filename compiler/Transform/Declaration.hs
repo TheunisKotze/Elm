@@ -1,70 +1,13 @@
 {-# OPTIONS_GHC -Wall #-}
-module Transform.Declaration (combineAnnotations, toExpr) where
-
-import Control.Applicative ((<$>))
-import Control.Monad.Error (throwError)
+module Transform.Declaration (toExpr) where
 
 import qualified AST.Annotation as A
 import qualified AST.Declaration as D
 import qualified AST.Expression.General as E
-import qualified AST.Expression.Source as S
 import qualified AST.Expression.Valid as V
 import qualified AST.Pattern as P
 import qualified AST.Type as T
 import qualified AST.Variable as Var
-
-import qualified Transform.Definition as Def
-
-
-combineAnnotations :: [D.SourceDecl] -> Def.Validated [D.ValidDecl]
-combineAnnotations decls =
-  let go = combineAnnotations
-      msg x = "Formatting Error: The type annotation for '" ++ x ++
-              "' must be directly above its definition."
-  in
-  case decls of
-    -- simple cases, pass them through with no changes
-    [] -> return []
-
-    D.Datatype name tvars ctors : rest ->
-        (:) (D.Datatype name tvars ctors) <$> go rest
-
-    D.TypeAlias name tvars alias : rest ->
-        (:) (D.TypeAlias name tvars alias) <$> go rest
-
-    D.Fixity assoc prec op : rest ->
-        (:) (D.Fixity assoc prec op) <$> go rest
-
-    -- combine definitions
-    D.Definition def : defRest ->
-        case def of
-          S.Definition pat expr ->
-              do expr' <- Def.validateExpr expr
-                 let def' = V.Definition pat expr' Nothing
-                 (:) (D.Definition def') <$> go defRest
-
-          S.TypeAnnotation name tipe ->
-              case defRest of
-                D.Definition (S.Definition pat@(P.Var name') expr) : rest
-                    | name == name' ->
-                        do expr' <- Def.validateExpr expr
-                           let def' = V.Definition pat expr' (Just tipe)
-                           (:) (D.Definition def') <$> go rest
-
-                _ -> throwError (msg name)
-
-    -- combine ports
-    D.Port port : portRest ->
-        case port of
-          D.PPDef name _ -> throwError (msg name)
-          D.PPAnnotation name tipe ->
-              case portRest of
-                D.Port (D.PPDef name' expr) : rest | name == name' ->
-                    do expr' <- Def.validateExpr expr
-                       (:) (D.Port (D.Out name expr' tipe)) <$> go rest
-
-                _ -> (:) (D.Port (D.In name tipe)) <$> go portRest
-
 
 toExpr :: String -> [D.CanonicalDecl] -> [V.CanonicalDef]
 toExpr moduleName = concatMap (toDefs moduleName)

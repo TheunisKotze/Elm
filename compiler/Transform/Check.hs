@@ -14,7 +14,7 @@ import qualified AST.Declaration as D
 import qualified AST.Pattern as Pattern
 import qualified AST.Type as T
 import qualified AST.Variable as Var
-import qualified Transform.Expression as Expr
+import qualified Transform.Crawl as Crawl
 
 import AST.PrettyPrint
 import Text.PrettyPrint as P
@@ -55,7 +55,7 @@ duplicates decls =
               D.In name _ -> (name, [])
 
     exprDups :: Valid.RawExpr -> Either String Valid.RawExpr
-    exprDups expr = Expr.crawl defsDups extDups expr
+    exprDups expr = Crawl.crawl defsDups extDups expr
 
     defsDups :: [Valid.RawDef] -> Either String [Valid.RawDef]
     defsDups defs =

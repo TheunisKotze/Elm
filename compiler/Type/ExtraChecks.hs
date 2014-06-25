@@ -15,11 +15,12 @@ import qualified Data.UnionFind.IO as UF
 import Text.PrettyPrint as P
 
 import qualified AST.Annotation as A
+import qualified AST.Expression.General as General
 import qualified AST.Expression.Valid as Valid
 import qualified AST.PrettyPrint as PP
 import qualified AST.Type as ST
 import qualified AST.Variable as Var
-import qualified Transform.Expression as Expr
+import qualified Transform.Crawl as Crawl
 import qualified Type.Type as TT
 import qualified Type.State as TS
 
@@ -53,11 +54,29 @@ data Direction = In | Out
 
 portTypes :: (Monad m) => Valid.CanonicalExpr -> ErrorT [P.Doc] m ()
 portTypes expr =
-  case Expr.checkPorts (check In) (check Out) expr of
+  case checkPorts expr of
     Left err -> throwError err
     Right _  -> return ()
   where
+    checkPorts = Crawl.crawl (mapM checkDef) checkPort
+        where
+          checkDef def@(Valid.Definition _ body _) =
+              do _ <- checkPorts body
+                 return def
+
+          checkPort region port =
+              A.A region . General.Extras <$>
+              case port of
+                Valid.PortIn name st ->
+                    do check In name st
+                       return $ Valid.PortIn name st
+
+                Valid.PortOut name st signal ->
+                    do check Out name st
+                       Valid.PortOut name st <$> checkPorts signal
+
     check = isValid True False False
+
     isValid isTopLevel seenFunc seenSignal direction name tipe =
         case tipe of
           ST.Aliased _ t -> valid t

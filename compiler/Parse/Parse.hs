@@ -16,7 +16,7 @@ import Parse.Helpers
 import Parse.Declaration (infixDecl)
 import Parse.Module
 import qualified Parse.Declaration as Decl
-import Transform.Declaration (combineAnnotations)
+import qualified Transform.Validate as Validate
 
 freshDef = commitIf (freshLine >> (letter <|> char '_')) $ do
              freshLine
@@ -29,7 +29,7 @@ program :: OpTable -> String -> Either [P.Doc] M.ValidModule
 program table src =
     do (M.Module names filePath exs ims parseDecls) <-
            setupParserWithTable table programParser src
-       let decls' = evalState (runErrorT (combineAnnotations parseDecls)) 0
+       let decls' = evalState (runErrorT (Validate.declarations parseDecls)) 0
        decls <- either (\err -> Left [P.text err]) Right decls'
        return $ M.Module names filePath exs ims decls
 
