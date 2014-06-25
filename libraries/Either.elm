@@ -6,7 +6,7 @@ module Either where
 @docs Either
 
 # Taking Eithers apart
-@docs either, isLeft, isRight
+@docs extract, isLeft, isRight
 
 # Eithers and Lists
 @docs lefts, rights, partition
@@ -28,14 +28,14 @@ data Either a b = Left a | Right b
 {-| Apply the first function to a `Left` and the second function to a `Right`.
 This allows the extraction of a value from an `Either`.
 
-      either (\n -> n + 1) sqrt (Left  4) == 5
-      either (\n -> n + 1) sqrt (Right 4) == 2
+      extract (\n -> n + 1) sqrt (Left  4) == 5
+      extract (\n -> n + 1) sqrt (Right 4) == 2
 
       map : (a -> b) -> Either err a -> Either err b
-      map f e = either Left (\x -> Right (f x)) e
+      map f e = extract Left (\x -> Right (f x)) e
 -}
-either : (a -> c) -> (b -> c) -> Either a b -> c
-either f g e = case e of { Left x -> f x ; Right y -> g y }
+extract : (a -> c) -> (b -> c) -> Either a b -> c
+extract f g e = case e of { Left x -> f x ; Right y -> g y }
 
 {-| True if the value is a `Left`.
 
