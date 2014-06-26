@@ -32,7 +32,6 @@ it as a single unit.
 
 import Basics (..)
 import List
-import Either (Either(Left, Right))
 import Transform2D (Transform2D, identity)
 import Native.Graphics.Collage
 import Graphics.Element (Element)
@@ -101,6 +100,8 @@ dashed clr = { defaultLine | color <- clr, dashing <- [8,4] }
 {-| Create a dotted line style with a given color. Dashing equals `[3,3]`. -}
 dotted : Color -> LineStyle
 dotted clr = { defaultLine | color <- clr, dashing <- [3,3] }
+
+data Either a b = Left a | Right b
 
 data BasicForm
   = FPath LineStyle Path
