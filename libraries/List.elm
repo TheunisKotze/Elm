@@ -7,10 +7,10 @@ list must have the same type.
 @docs (::), (++), isEmpty, length, reverse, map
 
 # Sub-lists
-@docs head, tail, last, filter, filterMap, take, drop
+@docs head, tail, last, filter, take, drop
 
 # Putting Lists Together
-@docs concat, concatMap, join, intersperse, zip, zipWith, repeat
+@docs concat, join, intersperse, zip, zipWith, repeat
 
 # Taking Lists Apart
 @docs partition, unzip
@@ -18,8 +18,11 @@ list must have the same type.
 # Folds
 @docs foldr, foldl, foldr1, foldl1, scanl, scanl1
 
+# Special Maps
+@docs filterMap, concatMap, indexedMap
+
 # Special Folds
-@docs sum, product, maximum, minimum, all, any, and, or
+@docs sum, product, maximum, minimum, all, any
 
 # Sorting
 @docs sort, sortBy, sortWith
@@ -80,6 +83,15 @@ isEmpty xs =
 {-| Apply a function to every element of a list: `(map sqrt [1,4,9] == [1,2,3])` -}
 map : (a -> b) -> [a] -> [b]
 map = Native.List.map
+
+{-| Same as `map` but the function is also applied to the index of each
+element (starting at zero).
+
+      indexedMap (,) ["Tom","Sue","Bob"] == [ (0,"Tom"), (1,"Sue"), (2,"Bob") ]
+-}
+indexedMap : (Int -> a -> b) -> [a] -> [b]
+indexedMap f xs =
+    zipWith f [ 0 .. length xs - 1 ] xs
 
 {-| Reduce a list from the left: `(foldl (::) [] [1,2,3] == [3,2,1])` -}
 foldl : (a -> b -> b) -> b -> [a] -> b
@@ -148,14 +160,6 @@ all = Native.List.all
 {-| Check to see if any elements satisfy the predicate. -}
 any : (a -> Bool) -> [a] -> Bool
 any = Native.List.any
-
-{-| Check to see if all elements are True. -}
-and : [Bool] -> Bool
-and = foldl (&&) True
-
-{-| Check to see if any elements are True. -}
-or : [Bool] -> Bool
-or = foldl (||) False
 
 {-| Concatenate a list of appendable things:
 
