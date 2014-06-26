@@ -5,6 +5,7 @@
 
   * Type aliases are allowed in port types
   * Error on ambiguious use of imported variables
+  * zipN and zipWithN up to N=5
   * Higher kinded polymorphism (a.k.a. higher-order types)
   * Many bug fixes for importing types
   * Better architecture for compiler. Uses types to make compilation pipeline
