@@ -20,7 +20,6 @@ work with a bunch of computations that may fail.
 -}
 
 import Basics (not, (.))
-import List (foldr, (::))
 
 {-| The Maybe datatype. Useful when a computation may or may not
 result in a value (e.g. logarithm is defined only for positive
