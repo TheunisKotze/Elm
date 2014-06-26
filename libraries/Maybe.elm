@@ -1,4 +1,7 @@
-module Maybe (Maybe(..), extract, isJust, isNothing, justs, maybe, andThen) where
+module Maybe ( Maybe(..)
+             , extract, isJust, isNothing
+             , justs, maybe, andThen
+             ) where
 
 {-| Represents an optional value. Maybe it is there, maybe it is not.
 
