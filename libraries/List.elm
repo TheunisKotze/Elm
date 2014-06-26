@@ -16,13 +16,13 @@ list must have the same type.
 @docs partition, unzip
 
 # Folds
-@docs foldr, foldl, foldr1, foldl1, scanl, scanl1
+@docs foldr, foldl, foldr1, foldl1
 
 # Special Maps
 @docs filterMap, concatMap, indexedMap
 
 # Special Folds
-@docs sum, product, maximum, minimum, all, any
+@docs sum, product, maximum, minimum, all, any, scanl, scanl1
 
 # Sorting
 @docs sort, sortBy, sortWith
