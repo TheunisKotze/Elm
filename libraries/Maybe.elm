@@ -1,6 +1,6 @@
 module Maybe ( Maybe(..)
              , extract, isJust, isNothing
-             , justs, maybe, andThen
+             , maybe, andThen
              ) where
 
 {-| Represents an optional value. Maybe it is there, maybe it is not.
@@ -10,9 +10,6 @@ module Maybe ( Maybe(..)
 
 # Taking Maybes apart
 @docs extract, isJust, isNothing
-
-# Maybes and Lists
-@docs justs
 
 # Command Syntax
 The following functions help you use Elm's "Command Syntax", making it easy to
@@ -64,16 +61,6 @@ isJust = extract False (\_ -> True)
 -}
 isNothing : Maybe a -> Bool
 isNothing = not . isJust
-
-cons : Maybe a -> [a] -> [a]
-cons mx xs = extract xs (\x -> x :: xs) mx
-
-{-| Filters out Nothings and extracts the remaining values.
-
-      justs [Just 0, Nothing, Just 5, Just 7] == [0,5,7]
--}
-justs : [Maybe a] -> [a]
-justs = foldr cons []
 
 {-| This value helps us Maybes with "Command Syntax". Think of this as syntactic
 sugar for the `andThen` function. It lets us chain together many computations

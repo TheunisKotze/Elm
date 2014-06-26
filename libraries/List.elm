@@ -7,7 +7,7 @@ list must have the same type.
 @docs (::), (++), isEmpty, length, reverse, map
 
 # Sub-lists
-@docs head, tail, last, filter, take, drop
+@docs head, tail, last, filter, filterMap, take, drop
 
 # Putting Lists Together
 @docs concat, concatMap, join, intersperse, zip, zipWith, repeat
@@ -116,6 +116,22 @@ scanl1 = Native.List.scanl1
 -}
 filter : (a -> Bool) -> [a] -> [a]
 filter = Native.List.filter
+
+{-| Apply a function that may succeed to all values in the list, but only keep
+the successes.
+
+      toInt : String -> Maybe Int
+
+      filterMap toInt ["3", "4.0", "5", "hats"] == [3,5]
+-}
+filterMap : (a -> Maybe b) -> [a] -> [b]
+filterMap xs = Native.List.foldr maybeCons [] xs
+
+maybeCons : Maybe a -> [a] -> [a]
+maybeCons mx xs =
+    case mx of
+      Just x -> x :: xs
+      Nothing -> xs
 
 {-| Determine the length of a list: `(length [1,2,3] == 3)` -}
 length : [a] -> Int
